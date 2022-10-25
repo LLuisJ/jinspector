@@ -222,7 +222,7 @@ class Decompiler:
                     constant['length'] = self.read2()
                     constant['bytes'] = self.f.read(constant['length'])
                 case _:
-                    print(f'unknown tag {constant["tag"]}')
+                    print(f'unknown tag {constant["tag"]} (not yet implemented)')
                     sys.exit(1)
             self.obj['constant_pool'].append(constant)
         self.read_access_flags()
@@ -314,115 +314,6 @@ class Decompiler:
                 attribute['info'].append(self.read1())
             self.obj['attributes'].append(attribute)
 
-"""def main():
-    f = open(sys.argv[1], 'rb')
-    self.obj = dict()
-    self.obj['magic'] = f.read(4)
-    if self.obj['magic'] != b'\xca\xfe\xba\xbe':
-        print('unknown format (at least not java class format (magic wrong))')
-    self.obj['minor_version'] = int.from_bytes(f.read(2), 'big')
-    self.obj['major_version'] = int.from_bytes(f.read(2), 'big')
-    self.obj['constant_pool_count'] = int.from_bytes(f.read(2), 'big')
-    self.obj['constant_pool'] = []
-    for i in range(self.obj['constant_pool_count'] - 1):
-        constant = dict()
-        constant['tag'] = int.from_bytes(f.read(1), 'big')
-        match constant['tag']:
-            case 7:
-                constant['name_index'] = int.from_bytes(f.read(2), 'big')
-            case 9:
-                constant['class_index'] = int.from_bytes(f.read(2), 'big')
-                constant['name_and_type_index'] = int.from_bytes(f.read(2), 'big')
-            case 10:
-                constant['class_index'] = int.from_bytes(f.read(2), 'big')
-                constant['name_and_type_index'] = int.from_bytes(f.read(2), 'big')
-            case 11:
-                constant['class_index'] = int.from_bytes(f.read(2), 'big')
-                constant['name_and_type_index'] = int.from_bytes(f.read(2), 'big')
-            case 8:
-                constant['string_index'] = int.from_bytes(f.read(2), 'big')
-            case 12:
-                constant['name_index'] = int.from_bytes(f.read(2), 'big')
-                constant['descriptor_index'] = int.from_bytes(f.read(2), 'big')
-            case 1:
-                constant['length'] = int.from_bytes(f.read(2), 'big')
-                constant['bytes'] = f.read(constant['length'])
-            case _:
-                print(f'unknown tag {constant["tag"]}')
-                sys.exit(1)
-        self.obj['constant_pool'].append(constant)
-    access_flags = int.from_bytes(f.read(2), 'big')
-    self.obj['access_flags'] = []
-    for flag in class_access_flags:
-        if access_flags & flag[1] != 0:
-           self.obj['access_flags'].append(flag[0])
-    self.obj['this_class'] = int.from_bytes(f.read(2), 'big')
-    self.obj['super_class'] = int.from_bytes(f.read(2), 'big')
-    self.obj['interfaces_count'] = int.from_bytes(f.read(2), 'big')
-    self.obj['interfaces'] = []
-    for i in range(self.obj['interfaces_count']):
-        interface = dict()
-        interface['tag'] = int.from_bytes(f.read(1), 'big')
-        interface['name_index'] = int.from_bytes(f.read(2), 'big')
-    self.obj['fields_count'] = int.from_bytes(f.read(2), 'big')
-    self.obj['fields'] = []
-    for i in range(self.obj['fields_count']):
-        field = dict()
-        field_access_flag = int.from_bytes(f.read(2), 'big')
-        field['access_flags'] = []
-        for flag in field_access_flags:
-            if field_access_flag & flag[1] != 0:
-                field['access_flags'].append(flag[0])
-        field['name_index'] = int.from_bytes(f.read(2), 'big')
-        field['descriptor_index'] = int.from_bytes(f.read(2), 'big')
-        field['attributes_count'] = int.from_bytes(f.read(2), 'big')
-        field['attributes'] = []
-        for j in range(field['attributes_count']):
-            attribute = dict()
-            attribute['attribute_name_index'] = int.from_bytes(f.read(2), 'big')
-            attribute['attribute_length'] = int.from_bytes(f.read(4), 'big')
-            attribute['info'] = []
-            for k in range(field['attribute_length']):
-                attribute['info'].append(int.from_bytes(f.read(1), 'big'))
-            field['attributes'].append(attribute)
-        self.obj['fields'].append(field)
-    self.obj['methods_count'] = int.from_bytes(f.read(2), 'big')
-    self.obj['methods'] = []
-    for i in range(self.obj['methods_count']):
-        method = dict()
-        method['access_flags'] = []
-        method_access_flag = int.from_bytes(f.read(2), 'big')
-        for flag in method_access_flags:
-            if method_access_flag & flag[1] != 0:
-                method['access_flags'].append(flag[0])
-        method['name_index'] = int.from_bytes(f.read(2), 'big')
-        method['descriptor_index'] = int.from_bytes(f.read(2), 'big')
-        method['attributes_count'] = int.from_bytes(f.read(2), 'big')
-        method['attributes'] = []
-        for j in range(method['attributes_count']):
-            attribute = dict()
-            attribute['attribute_name_index'] = int.from_bytes(f.read(2), 'big')
-            attribute['attribute_length'] = int.from_bytes(f.read(4), 'big')
-            attribute['info'] = []
-            for k in range(attribute['attribute_length']):
-                attribute['info'].append(int.from_bytes(f.read(1), 'big'))
-            method['attributes'].append(attribute)
-        self.obj['methods'].append(method)
-    self.obj['attributes_count'] = int.from_bytes(f.read(2), 'big')
-    self.obj['attributes'] = []
-    for i in range(self.obj['attributes_count']):
-        attribute = dict()
-        attribute['attribute_name_index'] = int.from_bytes(f.read(2), 'big')
-        attribute['attribute_length'] = int.from_bytes(f.read(4), 'big')
-        attribute['info'] = []
-        for j in range(attribute['attribute_length']):
-            attribute['info'].append(int.from_bytes(f.read(1), 'big'))
-        self.obj['attributes'].append(attribute)
-    f.close()
-    if '-raw' in sys.argv:
-        dprint(self.obj, 4)
-    else:
-        prettyprint(self.obj)"""
 
 if __name__ == '__main__':
     Decompiler('-raw' in sys.argv)
