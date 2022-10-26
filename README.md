@@ -3,6 +3,8 @@ jinspector - a simple, not ready for anything java class decompiler (of some sor
 
 I did this just because I was curious about the structure of java class files.
 
+__*This project is pretty barebones at the moment. With some time, I will expand it to decompile more and more of the bytecode*__
+
 This thing is not ready for anything and probably infested with bugs but it can parse and decompile simple class files (like the one included in this repo).
 
 Run with:
