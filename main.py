@@ -164,15 +164,11 @@ class Decompiler:
 
     obj = {}
     f = None
+    raw = False
 
     def __init__(self, raw):
         self.f = open(sys.argv[1], 'rb')
-        self.read_magic()
-        self.f.close()
-        if raw:
-            dprint(self.obj, 0)
-        else:
-            prettyprint(self.obj)
+        self.raw = raw
 
     def read1(self):
         return int.from_bytes(self.f.read(1), 'big')
@@ -183,17 +179,32 @@ class Decompiler:
     def read4(self):
         return int.from_bytes(self.f.read(4), 'big')
 
+    def run(self):
+        self.read_magic()
+        self.read_version()
+        self.read_constant_pool()
+        self.read_access_flags()
+        self.read_this_class()
+        self.read_super_class()
+        self.read_interfaces()
+        self.read_fields()
+        self.read_methods()
+        self.read_attributes()
+        self.f.close()
+        if self.raw:
+            dprint(self.obj, 0)
+        else:
+            prettyprint(self.obj)
+
     def read_magic(self):
         self.obj['magic'] = self.f.read(4)
         if self.obj['magic'] != b'\xca\xfe\xba\xbe':
             print('unknown format (wrong magic)')
             sys.exit(1)
-        self.read_version()
 
     def read_version(self):
         self.obj['minor_version'] = self.read2()
         self.obj['major_version'] = self.read2()
-        self.read_constant_pool()
 
     def read_constant_pool(self):
         self.obj['constant_pool_count'] = self.read2()
@@ -225,7 +236,6 @@ class Decompiler:
                     print(f'unknown tag {constant["tag"]} (not yet implemented)')
                     sys.exit(1)
             self.obj['constant_pool'].append(constant)
-        self.read_access_flags()
 
     def read_access_flags(self):
         access_flags = self.read2()
@@ -233,15 +243,12 @@ class Decompiler:
         for flag in class_access_flags:
             if access_flags & flag[1] != 0:
                 self.obj['access_flags'].append(flag[0])
-        self.read_this_class()
 
     def read_this_class(self):
         self.obj['this_class'] = self.read2()
-        self.read_super_class()
 
     def read_super_class(self):
         self.obj['super_class'] = self.read2()
-        self.read_interfaces()
 
     def read_interfaces(self):
         self.obj['interfaces_count'] = self.read2()
@@ -250,7 +257,6 @@ class Decompiler:
             interface = dict()
             interface['tag'] = self.read1()
             interface['name_index'] = self.read2()
-        self.read_fields()
 
     def read_fields(self):
         self.obj['fields_count'] = self.read2()
@@ -275,7 +281,6 @@ class Decompiler:
                     attribute['info'].append(self.read1())
                 field['attributes'].append(attribute)
             self.obj['fields'].append(field)
-        self.read_methods()
 
     def read_methods(self):
         self.obj['methods_count'] = self.read2()
@@ -300,7 +305,6 @@ class Decompiler:
                     attribute['info'].append(self.read1())
                 method['attributes'].append(attribute)
             self.obj['methods'].append(method)
-        self.read_attributes()
 
     def read_attributes(self):
         self.obj['attributes_count'] = self.read2()
@@ -316,4 +320,5 @@ class Decompiler:
 
 
 if __name__ == '__main__':
-    Decompiler('-raw' in sys.argv)
+    decompiler = Decompiler('-raw' in sys.argv)
+    decompiler.run()
