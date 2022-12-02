@@ -71,17 +71,6 @@ def dprint(d, indent):
         print((indent - 4) * ' ', '],' if indent - 4 != 0 else ']')
 
 def prettyprint(d):
-    type_map = {
-        'B': 'byte',
-        'C': 'char',
-        'D': 'double',
-        'F': 'float',
-        'I': 'int',
-        'J': 'long',
-        'S': 'short',
-        'Z': 'boolean',
-        'V': 'void'
-    }
     access_flags = {
         'ACC_PUBLIC': 'public',
         'ACC_PRIVATE': 'private',
@@ -112,7 +101,9 @@ def prettyprint(d):
         name_index = field['name_index']
         descriptor_index = field['descriptor_index']
         dc['name'] = constant_pool[name_index - 1]['bytes'].decode('utf-8')
-        dc['type'] = constant_pool[descriptor_index - 1]['bytes'].decode('utf-8')
+        typee = constant_pool[descriptor_index - 1]['bytes'].decode('utf-8')
+        dc['type'] = resolve_type(typee)
+        dc['flags'] = field['access_flags']
         obj['fields'].append(dc)
     obj['methods'] = []
     for method in d['methods']:
@@ -129,35 +120,41 @@ def prettyprint(d):
             fns += access_flags[flag]
             fns += ' '
         rt = sig[-1]
-        arrays = 0
-        while rt[0] == '[':
-            arrays += 1
-            rt = rt[1:]
-        if rt[0] == 'L':
-            rt = rt[1:]
-            fns += rt
-        else:
-            fns += type_map[rt] if rt in type_map else rt
-        fns += '[]' * arrays
+        fns += resolve_type(sig[-1])
         fns += ' '
         fns += dc['name'] + '('
         for i in range(len(sig[:-1])):
-            parameter = sig[i]
-            arrays = 0
-            while parameter[0] == '[':
-                arrays += 1
-                parameter = parameter[1:]
-            if i != 0:
-                fns += ', '
-            if parameter[0] == 'L':
-                fns += parameter[1:]
-            else:
-                fns += type_map[parameter] if parameter in type_map else parameter
-            fns += '[]' * arrays
+            fns += resolve_type(sig[i])
         fns += ')'
         dc['function_signature'] = fns
         obj['methods'].append(dc)
     dprint(obj, 4)
+
+
+def resolve_type(typee):
+    type_map = {
+        'B': 'byte',
+        'C': 'char',
+        'D': 'double',
+        'F': 'float',
+        'I': 'int',
+        'J': 'long',
+        'S': 'short',
+        'Z': 'boolean',
+        'V': 'void'
+    }
+    arrays = 0
+    while typee[0] == '[':
+        arrays += 1
+        typee = typee[1:]
+    type_signature = ''
+    if typee[0] == 'L':
+        typee = typee[1:]
+        type_signature += typee
+    else:
+        type_signature += type_map[typee]
+    type_signature += '[]' * arrays
+    return type_signature
 
 
 class Decompiler:
@@ -226,6 +223,15 @@ class Decompiler:
                     constant['name_and_type_index'] = self.read2()
                 case 8:
                     constant['string_index'] = self.read2()
+                case 3:
+                    constant['int_bytes'] = self.read4()
+                case 4:
+                    int_bytes = self.read4()
+                    # I still need to implement some infinity and NaN checks
+                    s = 1 if (int_bytes >> 31) == 0 else -1
+                    e = (int_bytes >> 23) & 0xff
+                    m = (int_bytes & 0x7fffff) << 1 if e == 0 else (int_bytes & 0x7fffff) | 0x800000
+                    constant['float_bytes'] = s * m * (2**(e-150))
                 case 12:
                     constant['name_index'] = self.read2()
                     constant['descriptor_index'] = self.read2()
@@ -277,7 +283,7 @@ class Decompiler:
                 attribute['attribute_name_index'] = self.read2()
                 attribute['attribute_length'] = self.read4()
                 attribute['info'] = []
-                for k in range(field['attribute_length']):
+                for k in range(attribute['attribute_length']):
                     attribute['info'].append(self.read1())
                 field['attributes'].append(attribute)
             self.obj['fields'].append(field)
